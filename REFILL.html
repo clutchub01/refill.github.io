@@ -192,6 +192,27 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 4px c
 textarea { resize: vertical; min-height: 190px; font-size: 0.84rem; line-height: 1.55; }
 .note { font-size: 0.84rem; min-height: 1.3em; font-weight: 600; color: var(--accent-strong); }
 
+/* Product detail view */
+[hidden] { display: none !important; }
+.card { cursor: pointer; }
+.open { background: none; border: none; padding: 0; text-align: left; color: inherit; letter-spacing: inherit; font-weight: inherit; }
+.open:hover { color: var(--accent-strong); }
+.modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(20, 14, 10, 0.55); padding: 16px; padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.sheet { background: var(--card); width: 100%; max-width: 430px; max-height: 100%; overflow-y: auto; border-radius: 34px; box-shadow: 0 28px 60px rgba(0, 0, 0, 0.3); animation: pop 0.22s ease; }
+@keyframes pop { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
+.stage { background: var(--surface); padding: 20px 22px 32px; display: flex; flex-direction: column; align-items: center; border-radius: 0 0 36px 36px; }
+.stage-top { width: 100%; display: flex; justify-content: space-between; }
+.circle-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); display: grid; place-items: center; color: var(--ink); }
+.plate.big { width: min(210px, 60vw); aspect-ratio: 1; margin-top: 6px; }
+.sheet-body { padding: 24px 26px 28px; display: grid; gap: 18px; }
+.sheet-body h2 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; }
+.sheet-body .desc { color: var(--ink2); font-size: 0.92rem; line-height: 1.65; }
+.parts { list-style: none; display: grid; gap: 8px; font-size: 0.88rem; border-top: 1px solid var(--line); padding-top: 14px; }
+.parts li { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.parts li span:last-child { color: var(--ink2); }
+.parts .save-row { color: var(--accent-strong); }
+.parts .save-row span:last-child { color: var(--accent-strong); }
+
 footer { border-top: 1px solid var(--line); padding-block: 34px 10px; text-align: center; color: var(--ink2); font-size: 0.9rem; }
 footer strong { color: var(--ink); letter-spacing: 0.04em; }
 
@@ -253,7 +274,7 @@ footer strong { color: var(--ink); letter-spacing: 0.04em; }
               <h2>The Sweet Break</h2>
               <p class="sub">Milk coffee + mini muffin</p>
             </div>
-            <div class="plate plate-lg" id="featPlate"></div>
+            <div class="plate plate-lg" id="featPlate" data-open="sweet-break" style="cursor:pointer"></div>
           </div>
           <div class="controls">
             <div class="stepper"><button type="button" id="fMinus" aria-label="Fewer">−</button><span id="fQty">1</span><button type="button" id="fPlus" aria-label="More">+</button></div>
@@ -354,6 +375,29 @@ footer strong { color: var(--ink); letter-spacing: 0.04em; }
   <footer>
     <strong>REFILL</strong> · A little boost. A better day.
   </footer>
+
+  <div class="modal" id="detail" role="dialog" aria-modal="true" aria-labelledby="dName" hidden>
+    <div class="sheet">
+      <div class="stage">
+        <div class="stage-top">
+          <button class="circle-btn" type="button" id="dClose" aria-label="Back to menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+        </div>
+        <div id="dStage"></div>
+      </div>
+      <div class="sheet-body">
+        <div><span class="tag" id="dCat"></span><h2 id="dName"></h2></div>
+        <div class="controls" style="margin:0">
+          <div class="stepper"><button type="button" id="dMinus" aria-label="Fewer">−</button><span id="dQty">1</span><button type="button" id="dPlus" aria-label="More">+</button></div>
+          <div class="price"><small>₦</small><span id="dPrice"></span></div>
+        </div>
+        <p class="desc" id="dDesc"></p>
+        <ul class="parts" id="dParts" hidden></ul>
+        <button class="btn full" type="button" id="dAdd">Add to order</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -461,7 +505,7 @@ function card(it) {
   if (it.tag) chips += '<span class="chip">' + it.tag + '</span> ';
   if (save > 0) chips += '<span class="chip save">Save ₦' + naira(save) + '</span>';
   return '<article class="card">' + plate(it.id, it.types) +
-    '<div>' + (chips ? '<div>' + chips + '</div>' : '') + '<span class="tag">' + it.cat + '</span><h3>' + it.name + '</h3><p>' + it.desc + '</p></div>' +
+    '<div>' + (chips ? '<div>' + chips + '</div>' : '') + '<span class="tag">' + it.cat + '</span><h3><button type="button" class="open" data-open="' + it.id + '">' + it.name + '</button></h3><p>' + it.desc + '</p></div>' +
     '<div class="foot"><div class="price"><small>₦</small>' + naira(it.price) + '</div>' +
     '<button class="add" type="button" aria-label="Add ' + it.name + ' to order" data-add="' + it.id + '">' + PLUS + '</button></div></article>';
 }
@@ -477,7 +521,12 @@ document.getElementById('tabs').addEventListener('click', function (e) {
   b.classList.add('on'); activeCat = b.dataset.cat; renderMenu();
 });
 document.addEventListener('click', function (e) {
-  var a = e.target.closest('[data-add]'); if (a) addToBag(a.dataset.add, 1);
+  var a = e.target.closest('[data-add]');
+  if (a) { addToBag(a.dataset.add, 1); return; }
+  var o = e.target.closest('[data-open]');
+  if (o) { openDetail(o.dataset.open); return; }
+  var c = e.target.closest('.card');
+  if (c) { var b = c.querySelector('[data-open]'); if (b) openDetail(b.dataset.open); }
 });
 
 /* Featured card */
@@ -560,6 +609,48 @@ function renderStamps() {
 }
 document.getElementById('stampBtn').onclick = function () { stamps = stamps === 5 ? 0 : stamps + 1; renderStamps(); };
 document.getElementById('stampReset').onclick = function () { stamps = 0; renderStamps(); };
+
+/* ---------- Product detail view ---------- */
+var detailId = null, detailQty = 1, lastFocus = null, modalEl = document.getElementById('detail');
+function renderDetail() {
+  var it = byId(detailId), save = it.parts ? listPrice(it) - it.price : 0;
+  document.getElementById('dStage').innerHTML = '<div class="plate big">' + art(it.types) + '<img src="photos/' + it.id + '.jpg" alt="" onerror="this.remove()"></div>';
+  document.getElementById('dCat').textContent = it.cat;
+  document.getElementById('dName').textContent = it.name;
+  document.getElementById('dDesc').textContent = it.desc;
+  document.getElementById('dQty').textContent = detailQty;
+  document.getElementById('dPrice').textContent = naira(it.price * detailQty);
+  var pl = document.getElementById('dParts');
+  if (it.parts) {
+    pl.innerHTML = it.parts.map(function (p) { var x = byId(p); return '<li><span>' + x.name + '</span><span>₦' + naira(x.price) + '</span></li>'; }).join('') +
+      (save > 0 ? '<li class="save-row"><span>Combo saving</span><span>₦' + naira(save) + '</span></li>' : '');
+    pl.hidden = false;
+  } else { pl.hidden = true; pl.innerHTML = ''; }
+}
+function openDetail(id) {
+  detailId = id; detailQty = 1; lastFocus = document.activeElement;
+  document.getElementById('dAdd').textContent = 'Add to order';
+  renderDetail(); modalEl.hidden = false; document.getElementById('dClose').focus();
+}
+function closeDetail() { modalEl.hidden = true; if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+document.getElementById('dClose').onclick = closeDetail;
+modalEl.addEventListener('click', function (e) { if (e.target === modalEl) closeDetail(); });
+document.getElementById('dMinus').onclick = function () { if (detailQty > 1) { detailQty--; renderDetail(); } };
+document.getElementById('dPlus').onclick = function () { detailQty++; renderDetail(); };
+document.getElementById('dAdd').onclick = function () {
+  addToBag(detailId, detailQty);
+  document.getElementById('dAdd').textContent = 'Added to your order';
+  setTimeout(closeDetail, 800);
+};
+document.addEventListener('keydown', function (e) {
+  if (modalEl.hidden) return;
+  if (e.key === 'Escape') { closeDetail(); return; }
+  if (e.key === 'Tab') {
+    var f = modalEl.querySelectorAll('button'), first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+});
 
 renderMenu(); fRender(); renderBag(); renderStamps();
 </script>
